@@ -199,8 +199,8 @@ workflow {
         sv_ch = Channel.fromPath(params.sv_vcf_path).map{ vcf -> [vcf, vcf + ".tbi" ] }
 
         annot_snv_ch = prep_SNVs(snv_ch)
-        setGT_snv_ch = setGT(annot_snv_ch)
-        prep_snv_ch = rm_missingness(setGT_snv_ch)
+        setGT_snv_ch = setGT_non_PASS_GT_SNVs(annot_snv_ch)
+        prep_snv_ch = filter_based_on_missigness_SNVs(setGT_snv_ch)
         prep_sv_ch = prep_SVs(sv_ch)
 
         snv_with_chr_name_ch = get_chr_name_SNVs(prep_snv_ch)

@@ -66,7 +66,7 @@ process filter_based_on_missigness_SNVs {
     publishDir "preprocessed_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    bcftools -i'INFO/AN>4302' -Oz -o ${snv_vcf.getBaseName()}.rm_missingness.vcf.gz
+    bcftools -i 'INFO/AN>4302' $snv_vcf -Oz -o ${snv_vcf.getBaseName()}.rm_missingness.vcf.gz
     bcftools tabix --tbi ${snv_vcf.getBaseName()}.rm_missingness.vcf.gz
     """
 }

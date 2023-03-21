@@ -26,6 +26,7 @@ process prep_SNVs {
     bcftools tabix --tbi ${snv_vcf.getBaseName()}.filtered.vcf.gz
     """
 }
+
 process setGT_non_PASS_GT_SNVs {
     errorStrategy 'retry'
     maxRetries 3
@@ -150,6 +151,7 @@ process concat_vcfs {
     bcftools index --tbi ${snv_vcf.getBaseName()}.combined.vcf.gz
     """
 }
+
 process beagle_statistical_phasing {
     errorStrategy 'retry'
     maxRetries 3

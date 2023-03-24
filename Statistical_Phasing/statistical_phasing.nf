@@ -5,47 +5,47 @@
 * YEAR: 2023
 */
 
-process prep_SNVs {
-    errorStrategy 'retry'
-    maxRetries 3
-    cache "lenient"
+process setGT_non_PASS_GT_SNVs {
+    //errorStrategy 'retry'
+    //maxRetries 3
+    //cache "lenient"
     cpus 1
     memory "8GB"
-    time "7h"
+    time "4h"
     input:
     tuple path(snv_vcf), path(snv_index)
     
     output:
     tuple path("*.filtered.vcf.gz"), path("*.filtered.vcf.gz.tbi")
     
-    publishDir "annotated_SNV_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
-    publishDir "annotated_SNV_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
+    publishDir "setGT_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
+    publishDir "setGT_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    bcftools view -f PASS  -m2 -M2 $snv_vcf | bcftools annotate -x ^INFO/AF,^INFO/AN,^INFO/AC,^FORMAT/FT,^FORMAT/GT | bcftools norm -d all -Oz -o ${snv_vcf.getBaseName()}.filtered.vcf.gz
+    bcftools +setGT $snv_vcf  -- -t q -n . -i 'FT!="PASS"' | bcftools annotate -x INFO,^FORMAT/GT -Oz -o ${snv_vcf.getBaseName()}.filtered.vcf.gz
     bcftools tabix --tbi ${snv_vcf.getBaseName()}.filtered.vcf.gz
     """
 }
 
-process setGT_non_PASS_GT_SNVs {
+process recalculate_AF_SNVs {
     errorStrategy 'retry'
     maxRetries 3
     cache "lenient"
     cpus 1
     memory "8GB"
-    time "7h"
+    time "4h"
     input:
     tuple path(snv_vcf), path(snv_index)
     
     output:
-    tuple path("*.gt_changed.vcf.gz"), path("*.gt_changed.vcf.gz.tbi")
+    tuple path("*.AF_calculated.vcf.gz"), path("*.AF_calculated.vcf.gz.tbi")
     
-    publishDir "setGT_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
-    publishDir "setGT_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
+    publishDir "recalculated_AF_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
+    publishDir "recalculated_AF_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    bcftools +setGT $snv_vcf -Oz -o ${snv_vcf.getBaseName()}.gt_changed.vcf.gz -- -t q -n . -i 'FT!="PASS"' 
-    bcftools tabix --tbi ${snv_vcf.getBaseName()}.gt_changed.vcf.gz
+    bcftools +fill-tags $snv_vcf -Oz -o ${snv_vcf.getBaseName()}.AF_calculated.vcf.gz -- -t AN,AC,AF,NS
+    bcftools tabix --tbi ${snv_vcf.getBaseName()}.AF_calculated.vcf.gz
     """
 }
 
@@ -55,7 +55,7 @@ process filter_based_on_missigness_SNVs {
     cache "lenient"
     cpus 1
     memory "8GB"
-    time "7h"
+    time "4h"
     input:
     tuple path(snv_vcf), path(snv_index)
     
@@ -71,7 +71,7 @@ process filter_based_on_missigness_SNVs {
     """
 }
 
-process prep_SVs{
+process prep_SVs {
     errorStrategy 'retry'
     maxRetries 3
     cache "lenient"
@@ -193,23 +193,25 @@ process remove_singletons {
     """
 }
 
+
+
 workflow {
 
         snv_ch = Channel.fromPath(params.snv_vcf_path).map{ vcf -> [vcf, vcf + ".tbi" ] }
-        sv_ch = Channel.fromPath(params.sv_vcf_path).map{ vcf -> [vcf, vcf + ".tbi" ] }
+        //sv_ch = Channel.fromPath(params.sv_vcf_path).map{ vcf -> [vcf, vcf + ".tbi" ] }
 
-        annot_snv_ch = prep_SNVs(snv_ch)
-        setGT_snv_ch = setGT_non_PASS_GT_SNVs(annot_snv_ch)
-        prep_snv_ch = filter_based_on_missigness_SNVs(setGT_snv_ch)
-        prep_sv_ch = prep_SVs(sv_ch)
+        setGT_snv_ch = setGT_non_PASS_GT_SNVs(snv_ch)
+        recalculated_ch = recalculate_AF_SNVs(setGT_snv_ch)
+        prep_snv_ch = filter_based_on_missigness_SNVs(recalculated_ch)
+        //prep_sv_ch = prep_SVs(sv_ch)
 
-        snv_with_chr_name_ch = get_chr_name_SNVs(prep_snv_ch)
-        sv_with_chr_name_ch = get_chr_name_SVs(prep_sv_ch)
+        //snv_with_chr_name_ch = get_chr_name_SNVs(prep_snv_ch)
+        //sv_with_chr_name_ch = get_chr_name_SVs(prep_sv_ch)
 
-        stat_phasing_ch = snv_with_chr_name_ch.join(sv_with_chr_name_ch)
-        stat_phasing_ch_combine = concat_vcfs(stat_phasing_ch)
+        //stat_phasing_ch = snv_with_chr_name_ch.join(sv_with_chr_name_ch)
+        //stat_phasing_ch_combine = concat_vcfs(stat_phasing_ch)
 
-        phased_vcfs = beagle_statistical_phasing(stat_phasing_ch_combine)
+        //phased_vcfs = beagle_statistical_phasing(stat_phasing_ch_combine)
 
-        remove_singletons(phased_vcfs)
+        //remove_singletons(phased_vcfs)
 }

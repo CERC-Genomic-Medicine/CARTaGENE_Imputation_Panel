@@ -49,6 +49,28 @@ process recalculate_AF_SNVs {
     """
 }
 
+process left_align_SNVs {
+    errorStrategy 'retry'
+    maxRetries 3
+    cache "lenient"
+    cpus 1
+    memory "8GB"
+    time "4h"
+    input:
+    tuple path(snv_vcf), path(snv_index)
+    
+    output:
+    tuple path("*.left_aligned.vcf.gz"), path("*.left_aligned.vcf.gz.tbi")
+    
+    publishDir "preprocessed_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
+    publishDir "preprocessed_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
+
+    """
+    bcftools norm -f ${params.ref} $snv_vcf -Oz -o ${snv_vcf.getBaseName()}.left_aligned.vcf.gz
+    bcftools tabix --tbi ${snv_vcf.getBaseName()}.left_aligned.vcf.gz
+    """
+}
+
 process filter_based_on_missigness_SNVs {
     errorStrategy 'retry'
     maxRetries 3
@@ -202,7 +224,8 @@ workflow {
 
         setGT_snv_ch = setGT_non_PASS_GT_SNVs(snv_ch)
         recalculated_ch = recalculate_AF_SNVs(setGT_snv_ch)
-        prep_snv_ch = filter_based_on_missigness_SNVs(recalculated_ch)
+        left_aligned_ch = left_align_SNVs(recalculated_ch)
+        prep_snv_ch = filter_based_on_missigness_SNVs(left_aligned_ch)
         //prep_sv_ch = prep_SVs(sv_ch)
 
         //snv_with_chr_name_ch = get_chr_name_SNVs(prep_snv_ch)

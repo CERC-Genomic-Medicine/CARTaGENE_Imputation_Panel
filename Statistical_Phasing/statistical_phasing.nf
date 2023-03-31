@@ -71,7 +71,7 @@ process left_align_SNVs {
     """
 }
 
-process filter_based_on_missigness_SNVs {
+process filter_based_on_AC_SNVs {
     errorStrategy 'retry'
     maxRetries 3
     cache "lenient"
@@ -82,14 +82,14 @@ process filter_based_on_missigness_SNVs {
     tuple path(snv_vcf), path(snv_index)
     
     output:
-    tuple path("*.rm_missingness.vcf.gz"), path("*.rm_missingness.vcf.gz.tbi")
+    tuple path("*.rm_monomorphics.vcf.gz"), path("*.rm_monomorphics.vcf.gz.tbi")
     
-    publishDir "preprocessed_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
-    publishDir "preprocessed_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
+    publishDir "rm_monomorphics_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
+    publishDir "rm_monomorphics_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    bcftools view -i 'INFO/AN>4302' $snv_vcf -Oz -o ${snv_vcf.getBaseName()}.rm_missingness.vcf.gz
-    bcftools tabix --tbi ${snv_vcf.getBaseName()}.rm_missingness.vcf.gz
+    bcftools view -c 1 $snv_vcf -Oz -o ${snv_vcf.getBaseName()}.rm_monomorphics.vcf.gz
+    bcftools tabix --tbi ${snv_vcf.getBaseName()}.rm_monomorphics.vcf.gz
     """
 }
 
@@ -110,7 +110,7 @@ process prep_SVs {
     publishDir "annotated_SV_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    bcftools view -f PASS $sv_vcf | bcftools annotate -x ^INFO/AF,^INFO/AN,^INFO/AC,^FORMAT/FT,^FORMAT/GT | bcftools norm -d all -Oz -o ${sv_vcf.getBaseName()}.filtered.vcf.gz
+    bcftools view -f PASS $sv_vcf | bcftools annotate -x ^INFO/AF,^INFO/AN,^INFO/AC, ^INFO/NS, ^FORMAT/GT | bcftools norm -d all -Oz -o ${sv_vcf.getBaseName()}.filtered.vcf.gz
     bcftools tabix --tbi ${sv_vcf.getBaseName()}.filtered.vcf.gz
     """
 }
@@ -225,7 +225,7 @@ workflow {
         setGT_snv_ch = setGT_non_PASS_GT_SNVs(snv_ch)
         recalculated_ch = recalculate_AF_SNVs(setGT_snv_ch)
         left_aligned_ch = left_align_SNVs(recalculated_ch)
-        prep_snv_ch = filter_based_on_missigness_SNVs(left_aligned_ch)
+        prep_snv_ch = filter_based_on_AC_SNVs(left_aligned_ch)
         //prep_sv_ch = prep_SVs(sv_ch)
 
         //snv_with_chr_name_ch = get_chr_name_SNVs(prep_snv_ch)

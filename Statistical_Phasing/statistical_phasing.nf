@@ -110,7 +110,7 @@ process prep_SVs {
     publishDir "annotated_SV_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    bcftools view -f PASS $sv_vcf | bcftools annotate -x ^INFO/AF,^INFO/AN,^INFO/AC, ^INFO/NS, ^FORMAT/GT | bcftools norm -d all -Oz -o ${sv_vcf.getBaseName()}.filtered.vcf.gz
+    bcftools view -f PASS $sv_vcf | bcftools annotate -x ^INFO/AF,^INFO/AN,^INFO/AC,^INFO/NS,^FORMAT/GT | bcftools norm -d all -Oz -o ${sv_vcf.getBaseName()}.filtered.vcf.gz
     bcftools tabix --tbi ${sv_vcf.getBaseName()}.filtered.vcf.gz
     """
 }

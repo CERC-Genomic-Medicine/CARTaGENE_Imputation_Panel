@@ -22,8 +22,8 @@ process setGT_non_PASS_GT_SNVs {
     publishDir "setGT_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    bcftools +setGT $snv_vcf  -- -t q -n . -i 'FT!="PASS" | GT=="."' | bcftools annotate -x INFO,^FORMAT/GT -Oz -o ${snv_vcf.getBaseName()}.filtered.vcf.gz
-    bcftools tabix --tbi ${snv_vcf.getBaseName()}.filtered.vcf.gz
+    bcftools +setGT $snv_vcf  -- -t q -n . -i 'FT!="PASS" || GT=="."' | bcftools annotate -x INFO,^FORMAT/GT -Oz -o ${snv_vcf.getSimpleName()}.filtered.vcf.gz
+    bcftools tabix --tbi ${snv_vcf.getSimpleName()}.filtered.vcf.gz
     """
 }
 
@@ -44,8 +44,8 @@ process recalculate_AF_SNVs {
     publishDir "recalculated_AF_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    bcftools +fill-tags $snv_vcf -Oz -o ${snv_vcf.getBaseName()}.AF_calculated.vcf.gz -- -t AN,AC,AF,NS
-    bcftools tabix --tbi ${snv_vcf.getBaseName()}.AF_calculated.vcf.gz
+    bcftools +fill-tags $snv_vcf -Oz -o ${snv_vcf.getSimpleName()}.AF_calculated.vcf.gz -- -t AN,AC,AF,NS
+    bcftools tabix --tbi ${snv_vcf.getSimpleName()}.AF_calculated.vcf.gz
     """
 }
 
@@ -66,8 +66,8 @@ process left_align_SNVs {
     publishDir "preprocessed_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    bcftools norm -f ${params.ref} $snv_vcf -Oz -o ${snv_vcf.getBaseName()}.left_aligned.vcf.gz
-    bcftools tabix --tbi ${snv_vcf.getBaseName()}.left_aligned.vcf.gz
+    bcftools norm -f ${params.ref} $snv_vcf -Oz -o ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz
+    bcftools tabix --tbi ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz
     """
 }
 
@@ -88,8 +88,8 @@ process filter_based_on_AC_SNVs {
     publishDir "rm_monomorphics_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    bcftools view -c 1 $snv_vcf -Oz -o ${snv_vcf.getBaseName()}.rm_monomorphics.vcf.gz
-    bcftools tabix --tbi ${snv_vcf.getBaseName()}.rm_monomorphics.vcf.gz
+    bcftools view -c 1 $snv_vcf -Oz -o ${snv_vcf.getSimpleName()}.rm_monomorphics.vcf.gz
+    bcftools tabix --tbi ${snv_vcf.getSimpleName()}.rm_monomorphics.vcf.gz
     """
 }
 

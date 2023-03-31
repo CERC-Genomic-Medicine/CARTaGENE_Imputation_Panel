@@ -22,7 +22,7 @@ process setGT_non_PASS_GT_SNVs {
     publishDir "setGT_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    bcftools +setGT $snv_vcf  -- -t q -n . -i 'FT!="PASS"' | bcftools annotate -x INFO,^FORMAT/GT -Oz -o ${snv_vcf.getBaseName()}.filtered.vcf.gz
+    bcftools +setGT $snv_vcf  -- -t q -n ./. -i 'FT!="PASS"' | bcftools annotate -x INFO,^FORMAT/GT -Oz -o ${snv_vcf.getBaseName()}.filtered.vcf.gz
     bcftools tabix --tbi ${snv_vcf.getBaseName()}.filtered.vcf.gz
     """
 }

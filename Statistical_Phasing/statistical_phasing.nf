@@ -10,8 +10,8 @@ process setGT_non_PASS_GT_SNVs {
     //maxRetries 3
     //cache "lenient"
     cpus 1
-    memory "8GB"
-    time "4h"
+    memory "16GB"
+    time "6h"
     input:
     tuple path(snv_vcf), path(snv_index)
     

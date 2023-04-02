@@ -62,8 +62,8 @@ process left_align_SNVs {
     output:
     tuple path("*.left_aligned.vcf.gz"), path("*.left_aligned.vcf.gz.tbi")
     
-    publishDir "preprocessed_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
-    publishDir "preprocessed_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
+    publishDir "left_aligned_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
+    publishDir "left_aligned_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
     bcftools norm -f ${params.ref} $snv_vcf -Oz -o ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz

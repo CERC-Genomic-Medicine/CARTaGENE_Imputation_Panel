@@ -132,7 +132,7 @@ process fill_REF_SVs {
     publishDir "annotated_SV_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    bcftools +fill-from-fasta $sv_vcf -- -c REF -f ${params.ref} -Oz -o ${sv_vcf.getBaseName()}.filled_REF.vcf.gz
+    bcftools +fill-from-fasta $sv_vcf -Oz -o ${sv_vcf.getBaseName()}.filled_REF.vcf.gz -- -c REF -f ${params.ref} 
     bcftools tabix --tbi ${sv_vcf.getBaseName()}.filled_REF.vcf.gz
     """
 

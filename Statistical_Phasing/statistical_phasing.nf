@@ -128,8 +128,8 @@ process fill_REF_SVs {
     output:
     tuple path("*.filled_REF.vcf.gz"), path("*.filled_REF.vcf.gz.tbi")
     
-    publishDir "annotated_SV_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
-    publishDir "annotated_SV_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
+    publishDir "Filled_REF_SV_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
+    publishDir "Filled_REF_SV_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
     bcftools +fill-from-fasta $sv_vcf -Oz -o ${sv_vcf.getBaseName()}.filled_REF.vcf.gz -- -c REF -f ${params.ref} 

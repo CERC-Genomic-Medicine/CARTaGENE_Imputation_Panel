@@ -115,6 +115,29 @@ process prep_SVs {
     """
 }
 
+process fill_REF_SVs {
+    //errorStrategy 'retry'
+    //maxRetries 3
+    cache "lenient"
+    cpus 1
+    memory "16GB"
+    time "7h"
+    input:
+    tuple path(sv_vcf), path(sv_index)
+    
+    output:
+    tuple path("*.filled_REF.vcf.gz"), path("*.filled_REF.vcf.gz.tbi")
+    
+    publishDir "annotated_SV_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
+    publishDir "annotated_SV_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
+
+    """
+    bcftools +fill-from-fasta $sv_vcf -- -c REF -f ${params.ref} -Oz -o ${sv_vcf.getBaseName()}.filled_REF.vcf.gz
+    bcftools tabix --tbi ${sv_vcf.getBaseName()}.filled_REF.vcf.gz
+    """
+
+}
+
 process get_chr_name_SNVs {
     errorStrategy 'retry'
     maxRetries 3
@@ -153,12 +176,12 @@ process get_chr_name_SVs {
 }
 
 process concat_vcfs {
-    errorStrategy 'retry'
-    maxRetries 3
+    //errorStrategy 'retry'
+    //maxRetries 3
     cache "lenient"
     cpus 1
-    memory "4GB"
-    time "4h"
+    memory "64GB"
+    time "8h"
     input:
     tuple val(chr_name), path(snv_vcf), path(snv_index), path(sv_vcf), path(sv_index)
 
@@ -169,8 +192,8 @@ process concat_vcfs {
     publishDir "combined_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    bcftools concat $snv_vcf $sv_vcf -Oz -o ${snv_vcf.getBaseName()}.combined.vcf.gz
-    bcftools index --tbi ${snv_vcf.getBaseName()}.combined.vcf.gz
+    bcftools concat $snv_vcf $sv_vcf | bcftools sort -m 64G -Oz -o ${snv_vcf.getSimpleName()}.combined.vcf.gz
+    bcftools index --tbi ${snv_vcf.getSimpleName()}.combined.vcf.gz
     """
 }
 
@@ -191,7 +214,7 @@ process beagle_statistical_phasing {
     publishDir "phased/ref_logs/", pattern: "*.ref.log", mode: "copy"
     
     """
-    java -jar -Djava.io.tmpdir=./temp/ -Xmx32g ${params.beagle} window=25.0 overlap=2.5 nthreads=8 gt=$chr out=${chr.getBaseName()}.ref 
+    java -jar -Djava.io.tmpdir=./temp/ -Xmx32g ${params.beagle} window=25.0 overlap=2.5 nthreads=8 gt=$chr out=${chr.getSimpleName()}.ref 
     """
 }
 
@@ -210,8 +233,8 @@ process remove_singletons {
     publishDir "phased/ref_withoutsingletons_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"
 
     """
-    bcftools view $chr -c 2 -Oz -o  ${chr.getBaseName()}.with_out_singletons.vcf.gz
-    bcftools index --tbi ${chr.getBaseName()}.with_out_singletons.vcf.gz
+    bcftools view $chr -c 2 -Oz -o  ${chr.getSimpleName()}.with_out_singletons.vcf.gz
+    bcftools index --tbi ${chr.getSimpleName()}.with_out_singletons.vcf.gz
     """
 }
 
@@ -220,21 +243,22 @@ process remove_singletons {
 workflow {
 
         snv_ch = Channel.fromPath(params.snv_vcf_path).map{ vcf -> [vcf, vcf + ".tbi" ] }
-        //sv_ch = Channel.fromPath(params.sv_vcf_path).map{ vcf -> [vcf, vcf + ".tbi" ] }
+        sv_ch = Channel.fromPath(params.sv_vcf_path).map{ vcf -> [vcf, vcf + ".tbi" ] }
 
-        setGT_snv_ch = setGT_non_PASS_GT_SNVs(snv_ch)
-        recalculated_ch = recalculate_AF_SNVs(setGT_snv_ch)
-        left_aligned_ch = left_align_SNVs(recalculated_ch)
-        prep_snv_ch = filter_based_on_AC_SNVs(left_aligned_ch)
-        //prep_sv_ch = prep_SVs(sv_ch)
+        //setGT_snv_ch = setGT_non_PASS_GT_SNVs(snv_ch)
+        //recalculated_ch = recalculate_AF_SNVs(setGT_snv_ch)
+        //left_aligned_ch = left_align_SNVs(recalculated_ch)
+        //prep_snv_ch = filter_based_on_AC_SNVs(left_aligned_ch)
+        prep_sv_ch = prep_SVs(sv_ch)
+        filled_ref_ch = fill_REF_SVs(prep_sv_ch)
 
-        //snv_with_chr_name_ch = get_chr_name_SNVs(prep_snv_ch)
-        //sv_with_chr_name_ch = get_chr_name_SVs(prep_sv_ch)
+        snv_with_chr_name_ch = get_chr_name_SNVs(snv_ch)
+        sv_with_chr_name_ch = get_chr_name_SVs(filled_ref_ch)
 
-        //stat_phasing_ch = snv_with_chr_name_ch.join(sv_with_chr_name_ch)
-        //stat_phasing_ch_combine = concat_vcfs(stat_phasing_ch)
+        stat_phasing_ch = snv_with_chr_name_ch.join(sv_with_chr_name_ch)
+        stat_phasing_ch_combine = concat_vcfs(stat_phasing_ch)
 
-        //phased_vcfs = beagle_statistical_phasing(stat_phasing_ch_combine)
+        phased_vcfs = beagle_statistical_phasing(stat_phasing_ch_combine)
 
-        //remove_singletons(phased_vcfs)
+        remove_singletons(phased_vcfs)
 }

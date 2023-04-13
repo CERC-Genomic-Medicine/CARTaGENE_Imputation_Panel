@@ -66,7 +66,7 @@ process left_align_SNVs {
     publishDir "left_aligned_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    bcftools norm -f ${params.ref} $snv_vcf -Oz -o ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz
+    ${params.vt} -r ${params.ref} $snv_vcf -o ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz
     bcftools tabix --tbi ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz
     """
 }
@@ -241,24 +241,23 @@ process remove_singletons {
 
 
 workflow {
-
         snv_ch = Channel.fromPath(params.snv_vcf_path).map{ vcf -> [vcf, vcf + ".tbi" ] }
-        sv_ch = Channel.fromPath(params.sv_vcf_path).map{ vcf -> [vcf, vcf + ".tbi" ] }
+        //sv_ch = Channel.fromPath(params.sv_vcf_path).map{ vcf -> [vcf, vcf + ".tbi" ] }
 
-        //setGT_snv_ch = setGT_non_PASS_GT_SNVs(snv_ch)
-        //recalculated_ch = recalculate_AF_SNVs(setGT_snv_ch)
-        //left_aligned_ch = left_align_SNVs(recalculated_ch)
-        //prep_snv_ch = filter_based_on_AC_SNVs(left_aligned_ch)
-        prep_sv_ch = prep_SVs(sv_ch)
-        filled_ref_ch = fill_REF_SVs(prep_sv_ch)
+        setGT_snv_ch = setGT_non_PASS_GT_SNVs(snv_ch)
+        recalculated_ch = recalculate_AF_SNVs(setGT_snv_ch)
+        left_aligned_ch = left_align_SNVs(recalculated_ch)
+        prep_snv_ch = filter_based_on_AC_SNVs(left_aligned_ch)
+        //prep_sv_ch = prep_SVs(sv_ch)
+        //filled_ref_ch = fill_REF_SVs(prep_sv_ch)
 
-        snv_with_chr_name_ch = get_chr_name_SNVs(snv_ch)
-        sv_with_chr_name_ch = get_chr_name_SVs(filled_ref_ch)
+        //snv_with_chr_name_ch = get_chr_name_SNVs(snv_ch)
+        //sv_with_chr_name_ch = get_chr_name_SVs(filled_ref_ch)
 
-        stat_phasing_ch = snv_with_chr_name_ch.join(sv_with_chr_name_ch)
-        stat_phasing_ch_combine = concat_vcfs(stat_phasing_ch)
+        //stat_phasing_ch = snv_with_chr_name_ch.join(sv_with_chr_name_ch)
+        //stat_phasing_ch_combine = concat_vcfs(stat_phasing_ch)
 
-        phased_vcfs = beagle_statistical_phasing(stat_phasing_ch_combine)
+        phased_vcfs = beagle_statistical_phasing(prep_snv_ch)
 
         remove_singletons(phased_vcfs)
 }

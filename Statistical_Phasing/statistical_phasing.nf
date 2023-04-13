@@ -66,7 +66,7 @@ process left_align_SNVs {
     publishDir "left_aligned_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    ${params.vt} -r ${params.ref} $snv_vcf -o ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz
+    ${params.vt} normalize $snv_vcf -r ${params.ref}  -o ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz
     bcftools tabix --tbi ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz
     """
 }

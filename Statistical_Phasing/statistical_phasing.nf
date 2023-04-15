@@ -62,11 +62,11 @@ process left_align_SNVs {
     output:
     tuple path("*.left_aligned.vcf.gz"), path("*.left_aligned.vcf.gz.tbi")
     
-    publishDir "left_aligned_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
-    publishDir "left_aligned_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
+    publishDir "normalized_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
+    publishDir "normalized_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    ${params.vt} normalize $snv_vcf -r ${params.ref}  -o ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz
+    ${params.vt} normalize $snv_vcf -r ${params.ref} |  bcftools norm -d all -Oz -o ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz 
     bcftools tabix --tbi ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz
     """
 }
@@ -218,6 +218,27 @@ process beagle_statistical_phasing {
     """
 }
 
+process recalculate_AF_phased {
+    errorStrategy 'retry'
+    maxRetries 3
+    cache "lenient"
+    cpus 1
+    memory "8GB"
+    time "4h"
+    input:
+    tuple path(snv_vcf), path(snv_index)
+    
+    output:
+    tuple path("*.AF_calculated.vcf.gz"), path("*.AF_calculated.vcf.gz.tbi")
+    
+    publishDir "recalculated_AF_phased_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
+    publishDir "recalculated_AF_phased_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
+
+    """
+    bcftools +fill-tags $snv_vcf -Oz -o ${snv_vcf.getSimpleName()}.AF_calculated.vcf.gz -- -t AN,AC,AF,NS
+    bcftools tabix --tbi ${snv_vcf.getSimpleName()}.AF_calculated.vcf.gz
+    """
+}
 process remove_singletons {
     cache "lenient"
     cpus 1
@@ -258,6 +279,7 @@ workflow {
         //stat_phasing_ch_combine = concat_vcfs(stat_phasing_ch)
 
         phased_vcfs = beagle_statistical_phasing(prep_snv_ch)
+        recal_phased = recalculate_AF_phased(phased_vcfs)
 
-        remove_singletons(phased_vcfs)
+        remove_singletons(recal_phased)
 }

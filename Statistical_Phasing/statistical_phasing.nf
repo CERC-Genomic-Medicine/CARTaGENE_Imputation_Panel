@@ -6,9 +6,9 @@
 */
 
 process setGT_non_PASS_GT_SNVs {
-    //errorStrategy 'retry'
-    //maxRetries 3
-    //cache "lenient"
+    errorStrategy 'retry'
+    maxRetries 3
+    cache "lenient"
     cpus 1
     memory "16GB"
     time "6h"
@@ -66,8 +66,30 @@ process left_align_SNVs {
     publishDir "normalized_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
-    ${params.vt} normalize $snv_vcf -r ${params.ref} |  bcftools norm -d all -Oz -o ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz 
+    ${params.vt} normalize $snv_vcf -r ${params.ref} -o ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz 
     bcftools tabix --tbi ${snv_vcf.getSimpleName()}.left_aligned.vcf.gz
+    """
+}
+
+process remove_duplicates_SNVs {
+    errorStrategy 'retry'
+    maxRetries 3
+    cache "lenient"
+    cpus 1
+    memory "8GB"
+    time "4h"
+    input:
+    tuple path(snv_vcf), path(snv_index)
+    
+    output:
+    tuple path("*.rm_dup.vcf.gz"), path("*.rm_dup.vcf.gz.tbi")
+    
+    publishDir "rm_dup_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
+    publishDir "rm_dup_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
+
+    """
+    bcftools norm -d all  $snv_vcf -Oz -o ${snv_vcf.getSimpleName()}.rm_dup.vcf.gz 
+    bcftools tabix --tbi ${snv_vcf.getSimpleName()}.rm_dup.vcf.gz
     """
 }
 
@@ -116,8 +138,8 @@ process prep_SVs {
 }
 
 process fill_REF_SVs {
-    //errorStrategy 'retry'
-    //maxRetries 3
+    errorStrategy 'retry'
+    maxRetries 3
     cache "lenient"
     cpus 1
     memory "16GB"
@@ -135,7 +157,6 @@ process fill_REF_SVs {
     bcftools +fill-from-fasta $sv_vcf -Oz -o ${sv_vcf.getBaseName()}.filled_REF.vcf.gz -- -c REF -f ${params.ref} 
     bcftools tabix --tbi ${sv_vcf.getBaseName()}.filled_REF.vcf.gz
     """
-
 }
 
 process get_chr_name_SNVs {
@@ -176,8 +197,8 @@ process get_chr_name_SVs {
 }
 
 process concat_vcfs {
-    //errorStrategy 'retry'
-    //maxRetries 3
+    errorStrategy 'retry'
+    maxRetries 3
     cache "lenient"
     cpus 1
     memory "64GB"
@@ -268,7 +289,8 @@ workflow {
         setGT_snv_ch = setGT_non_PASS_GT_SNVs(snv_ch)
         recalculated_ch = recalculate_AF_SNVs(setGT_snv_ch)
         left_aligned_ch = left_align_SNVs(recalculated_ch)
-        prep_snv_ch = filter_based_on_AC_SNVs(left_aligned_ch)
+        rm_dup_ch = remove_duplicates_SNVs(left_aligned_ch)
+        prep_snv_ch = filter_based_on_AC_SNVs(rm_dup_ch)
         //prep_sv_ch = prep_SVs(sv_ch)
         //filled_ref_ch = fill_REF_SVs(prep_sv_ch)
 

@@ -229,13 +229,15 @@ process beagle_statistical_phasing {
     tuple path(chr), path(index)
     
     output:
-    tuple path("*.ref.vcf.gz"), path("*.ref.log")
+    tuple path("*.ref.vcf.gz"), path("*.ref.vcf.gz.tbi"), path("*.ref.log")
     
     publishDir "phased/ref_vcfs/", pattern: "*.vcf.gz", mode: "copy"
+    publishDir "phased/ref_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"
     publishDir "phased/ref_logs/", pattern: "*.ref.log", mode: "copy"
     
     """
     java -jar -Djava.io.tmpdir=./temp/ -Xmx32g ${params.beagle} window=25.0 overlap=2.5 nthreads=8 gt=$chr out=${chr.getSimpleName()}.ref 
+    bcftools index --tbi ${chr.getSimpleName()}.ref.vcf.gz
     """
 }
 
@@ -252,8 +254,8 @@ process recalculate_AF_phased {
     output:
     tuple path("*.AF_calculated.vcf.gz"), path("*.AF_calculated.vcf.gz.tbi")
     
-    publishDir "recalculated_AF_phased_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
-    publishDir "recalculated_AF_phased_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
+    publishDir "phased/recalculated_AF_vcfs/", pattern: "*.vcf.gz", mode: "copy"   
+    publishDir "phased/recalculated_AF_vcfs/", pattern: "*.vcf.gz.tbi", mode: "copy"    
 
     """
     bcftools +fill-tags $snv_vcf -Oz -o ${snv_vcf.getSimpleName()}.AF_calculated.vcf.gz -- -t AN,AC,AF,NS
